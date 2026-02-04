@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Payment</title>
 <meta name="viewport" content="width=device-width">
+<title>Manual UTR Payment</title>
 </head>
 
 <body>
@@ -11,14 +11,18 @@
 
 <input id="name" placeholder="Your Name"><br><br>
 
-<input id="utr" placeholder="Enter UTR"><br><br>
+<input id="utr" placeholder="Enter 12 Digit UTR"><br><br>
 
 <button onclick="openUpi()">Open UPI</button>
-<button onclick="submit()">Submit</button>
+<button onclick="submit()">Submit UTR</button>
 
 <script src="firebase.js"></script>
 
 <script>
+
+cooldowns=[60,180,300,600,3600]
+attempts=parseInt(localStorage.getItem("utr_attempts")||0)
+nextTry=parseInt(localStorage.getItem("utr_next")||0)
 
 function openUpi(){
 location.href="upi://pay"
@@ -26,18 +30,69 @@ location.href="upi://pay"
 
 function submit(){
 
+now=Math.floor(Date.now()/1000)
+
+if(now<nextTry){
+left=nextTry-now
+return alert("Please wait "+left+" seconds")
+}
+
 n=document.getElementById("name").value
 u=document.getElementById("utr").value
 
-if(!n||!u)return alert("Fill all")
+if(!n||!u){
+registerFail()
+return alert("Fill all fields")
+}
+
+if(!/^[0-9]{12}$/.test(u)){
+registerFail()
+return alert("Invalid UTR")
+}
+
+firebase.database().ref("payments").once("value",s=>{
+
+used=false
+
+s.forEach(x=>{
+if(x.val().utr==u) used=true
+})
+
+if(used){
+registerFail()
+return alert("UTR already used")
+}
+
+localStorage.removeItem("utr_attempts")
+localStorage.removeItem("utr_next")
 
 firebase.database().ref("payments/"+Date.now()).set({
 name:n,
 utr:u,
-status:"pending"
+status:"pending",
+time:new Date().toLocaleString()
 })
 
-alert("Submitted")
+alert("Submitted successfully. Wait for admin approval.")
+
+})
+
+}
+
+function registerFail(){
+
+attempts++
+localStorage.setItem("utr_attempts",attempts)
+
+idx=attempts-1
+if(idx>=cooldowns.length) idx=cooldowns.length-1
+
+wait=cooldowns[idx]
+
+nextTry=Math.floor(Date.now()/1000)+wait
+localStorage.setItem("utr_next",nextTry)
+
+alert("Wrong attempt "+attempts+". Wait "+wait+" seconds.")
 
 }
 
