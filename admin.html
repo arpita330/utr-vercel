@@ -14,7 +14,7 @@ PASS="1234"
 function login(){
 
 if(document.getElementById("p").value!=PASS)
-return alert("Wrong")
+return alert("Wrong password")
 
 document.getElementById("panel").style.display="block"
 
@@ -28,8 +28,9 @@ v=x.val()
 
 h+=`
 <div>
-${v.name}<br>
+<b>${v.name}</b><br>
 UTR: ${v.utr}<br>
+Time: ${v.time}<br>
 Status: ${v.status}<br>
 <button onclick="approve('${x.key}')">Approve</button>
 </div><hr>
