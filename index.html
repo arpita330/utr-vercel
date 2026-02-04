@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Payment</title>
+<meta name="viewport" content="width=device-width">
+</head>
+
+<body>
+
+<h3>Open UPI App</h3>
+
+<input id="name" placeholder="Your Name"><br><br>
+
+<input id="utr" placeholder="Enter UTR"><br><br>
+
+<button onclick="openUpi()">Open UPI</button>
+<button onclick="submit()">Submit</button>
+
+<script src="firebase.js"></script>
+
+<script>
+
+function openUpi(){
+location.href="upi://pay"
+}
+
+function submit(){
+
+n=document.getElementById("name").value
+u=document.getElementById("utr").value
+
+if(!n||!u)return alert("Fill all")
+
+firebase.database().ref("payments/"+Date.now()).set({
+name:n,
+utr:u,
+status:"pending"
+})
+
+alert("Submitted")
+
+}
+
+</script>
+
+</body>
+</html>
