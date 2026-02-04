@@ -1,0 +1,53 @@
+<h3>Admin Panel</h3>
+
+<input id="p" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<div id="panel" style="display:none"></div>
+
+<script src="firebase.js"></script>
+
+<script>
+
+PASS="1234"
+
+function login(){
+
+if(document.getElementById("p").value!=PASS)
+return alert("Wrong")
+
+document.getElementById("panel").style.display="block"
+
+firebase.database().ref("payments").on("value",s=>{
+
+h=""
+
+s.forEach(x=>{
+
+v=x.val()
+
+h+=`
+<div>
+${v.name}<br>
+UTR: ${v.utr}<br>
+Status: ${v.status}<br>
+<button onclick="approve('${x.key}')">Approve</button>
+</div><hr>
+`
+
+})
+
+document.getElementById("panel").innerHTML=h
+
+})
+
+}
+
+function approve(id){
+
+firebase.database().ref("payments/"+id+"/status").set("paid")
+alert("Approved")
+
+}
+
+</script>
