@@ -1,101 +1,435 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width">
-<title>Manual UTR Payment</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual UTR Payment</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        h3 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            padding: 15px 18px;
+            margin-bottom: 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+            background: #fafafa;
+        }
+        input:focus {
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+        input::placeholder {
+            color: #aaa;
+            font-weight: 400;
+        }
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 5px;
+        }
+        button {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        button:first-child {
+            background: #667eea;
+            color: white;
+        }
+        button:first-child:hover {
+            background: #5a6fd6;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        button:last-child {
+            background: #28a745;
+            color: white;
+        }
+        button:last-child:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        #timerDisplay {
+            margin-top: 20px;
+            font-weight: 600;
+            color: #e74c3c;
+            font-size: 15px;
+            min-height: 24px;
+        }
+    </style>
 </head>
-
 <body>
 
-<h3>Open UPI App</h3>
+<div class="container">
+    <h3>💰 UTR Payment</h3>
 
-<input id="name" placeholder="Your Name"><br><br>
+    <input type="text" id="name" placeholder="Your Full Name" autocomplete="off">
+    <input type="text" id="utr" placeholder="Enter 12 Digit UTR Number" maxlength="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
 
-<input id="utr" placeholder="Enter 12 Digit UTR"><br><br>
+    <div class="button-group">
+        <button id="openUpiBtn">📱 Pay via UPI</button>
+        <button id="submitBtn">✅ Submit UTR</button>
+    </div>
 
-<button onclick="openUpi()">Open UPI</button>
-<button onclick="submit()">Submit UTR</button>
+    <div id="timerDisplay"></div>
+</div>
 
-<script src="firebase.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
+    (function() {
+        // --- Firebase Configuration ---
+        // IMPORTANT: Replace with your actual Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummyKeyForDemoReplaceWithYours",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abc123def456"
+        };
 
-cooldowns=[60,180,300,600,3600]
-attempts=parseInt(localStorage.getItem("utr_attempts")||0)
-nextTry=parseInt(localStorage.getItem("utr_next")||0)
+        // Initialize Firebase only if not already initialized
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
 
-function openUpi(){
-location.href="upi://pay"
-}
+        // --- Cooldown Configuration ---
+        const cooldowns = [60, 180, 300, 600, 3600]; // in seconds
+        const STORAGE_KEY_ATTEMPTS = "utr_attempts_v2";
+        const STORAGE_KEY_NEXT_TRY = "utr_next_try_v2";
 
-function submit(){
+        // --- State Management ---
+        let attempts = 0;
+        let nextTryTimestamp = 0;
+        let timerInterval = null;
 
-now=Math.floor(Date.now()/1000)
+        // --- DOM Elements ---
+        const nameInput = document.getElementById('name');
+        const utrInput = document.getElementById('utr');
+        const openUpiBtn = document.getElementById('openUpiBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const timerDisplay = document.getElementById('timerDisplay');
 
-if(now<nextTry){
-left=nextTry-now
-return alert("Please wait "+left+" seconds")
-}
+        // --- Initialize from Local Storage ---
+        function loadState() {
+            try {
+                const storedAttempts = localStorage.getItem(STORAGE_KEY_ATTEMPTS);
+                const storedNextTry = localStorage.getItem(STORAGE_KEY_NEXT_TRY);
 
-n=document.getElementById("name").value
-u=document.getElementById("utr").value
+                attempts = storedAttempts ? parseInt(storedAttempts, 10) : 0;
+                nextTryTimestamp = storedNextTry ? parseInt(storedNextTry, 10) : 0;
 
-if(!n||!u){
-registerFail()
-return alert("Fill all fields")
-}
+                // Validate parsed values
+                if (isNaN(attempts) || attempts < 0) attempts = 0;
+                if (isNaN(nextTryTimestamp) || nextTryTimestamp < 0) nextTryTimestamp = 0;
 
-if(!/^[0-9]{12}$/.test(u)){
-registerFail()
-return alert("Invalid UTR")
-}
+                // If cooldown expired, reset attempts
+                const now = Math.floor(Date.now() / 1000);
+                if (nextTryTimestamp > 0 && now >= nextTryTimestamp) {
+                    attempts = 0;
+                    nextTryTimestamp = 0;
+                    clearStoredState();
+                }
+            } catch (e) {
+                console.error("Error loading state:", e);
+                attempts = 0;
+                nextTryTimestamp = 0;
+                clearStoredState();
+            }
+        }
 
-firebase.database().ref("payments").once("value",s=>{
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY_ATTEMPTS, attempts.toString());
+                localStorage.setItem(STORAGE_KEY_NEXT_TRY, nextTryTimestamp.toString());
+            } catch (e) {
+                console.error("Error saving state:", e);
+            }
+        }
 
-used=false
+        function clearStoredState() {
+            try {
+                localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+                localStorage.removeItem(STORAGE_KEY_NEXT_TRY);
+            } catch (e) {
+                console.error("Error clearing state:", e);
+            }
+        }
 
-s.forEach(x=>{
-if(x.val().utr==u) used=true
-})
+        // --- Timer Display & Cooldown Management ---
+        function updateTimerDisplay() {
+            const now = Math.floor(Date.now() / 1000);
+            const left = nextTryTimestamp - now;
 
-if(used){
-registerFail()
-return alert("UTR already used")
-}
+            if (left <= 0) {
+                timerDisplay.textContent = '';
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+                enableInputs(true);
+                return;
+            }
 
-localStorage.removeItem("utr_attempts")
-localStorage.removeItem("utr_next")
+            const mins = Math.floor(left / 60);
+            const secs = left % 60;
+            timerDisplay.textContent = `⏳ Cooldown: ${mins}:${secs.toString().padStart(2, '0')} remaining`;
+            enableInputs(false);
+        }
 
-firebase.database().ref("payments/"+Date.now()).set({
-name:n,
-utr:u,
-status:"pending",
-time:new Date().toLocaleString()
-})
+        function startCooldownTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            updateTimerDisplay();
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+        }
 
-alert("Submitted successfully. Wait for admin approval.")
+        function enableInputs(enabled) {
+            nameInput.disabled = !enabled;
+            utrInput.disabled = !enabled;
+            submitBtn.disabled = !enabled;
+            openUpiBtn.disabled = !enabled;
+            
+            if (!enabled) {
+                submitBtn.style.opacity = '0.6';
+                submitBtn.style.cursor = 'not-allowed';
+                openUpiBtn.style.opacity = '0.6';
+                openUpiBtn.style.cursor = 'not-allowed';
+            } else {
+                submitBtn.style.opacity = '1';
+                submitBtn.style.cursor = 'pointer';
+                openUpiBtn.style.opacity = '1';
+                openUpiBtn.style.cursor = 'pointer';
+            }
+        }
 
-})
+        // --- Cooldown Logic ---
+        function applyCooldown() {
+            attempts++;
+            const idx = Math.min(attempts - 1, cooldowns.length - 1);
+            const waitSeconds = cooldowns[idx];
+            
+            nextTryTimestamp = Math.floor(Date.now() / 1000) + waitSeconds;
+            saveState();
+            startCooldownTimer();
 
-}
+            alert(`⚠️ Invalid attempt ${attempts}. Please wait ${waitSeconds} seconds before trying again.`);
+        }
 
-function registerFail(){
+        function resetCooldown() {
+            attempts = 0;
+            nextTryTimestamp = 0;
+            clearStoredState();
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            timerDisplay.textContent = '';
+            enableInputs(true);
+        }
 
-attempts++
-localStorage.setItem("utr_attempts",attempts)
+        // --- UTR Validation ---
+        function isValidUTR(utr) {
+            // Must be exactly 12 digits
+            return /^\d{12}$/.test(utr);
+        }
 
-idx=attempts-1
-if(idx>=cooldowns.length) idx=cooldowns.length-1
+        // --- Sanitize Inputs ---
+        function sanitizeInput(input) {
+            return input.trim().replace(/[<>]/g, ''); // Basic XSS prevention
+        }
 
-wait=cooldowns[idx]
+        // --- UPI Deep Link ---
+        function openUpiApp() {
+            // Check if cooldown is active
+            const now = Math.floor(Date.now() / 1000);
+            if (now < nextTryTimestamp) {
+                const left = nextTryTimestamp - now;
+                alert(`Please wait ${left} seconds before proceeding.`);
+                return;
+            }
 
-nextTry=Math.floor(Date.now()/1000)+wait
-localStorage.setItem("utr_next",nextTry)
+            // Try multiple UPI intent formats for better compatibility
+            const upiLink = 'upi://pay?pa=example@upi&pn=Merchant&am=0&cu=INR&mode=00';
+            const intentLink = 'intent://pay?pa=example@upi&pn=Merchant&am=0&cu=INR&mode=00#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end';
+            
+            // Use location.href for standard UPI link
+            try {
+                window.location.href = upiLink;
+            } catch (e) {
+                console.error("Failed to open UPI:", e);
+                alert("Could not open UPI app. Please make sure you have a UPI app installed.");
+            }
+        }
 
-alert("Wrong attempt "+attempts+". Wait "+wait+" seconds.")
+        // --- Submit UTR ---
+        function submitUTR() {
+            const now = Math.floor(Date.now() / 1000);
 
-}
+            // Check cooldown
+            if (now < nextTryTimestamp) {
+                const left = nextTryTimestamp - now;
+                alert(`⏳ Please wait ${left} seconds before submitting.`);
+                return;
+            }
 
+            // Get and sanitize inputs
+            const rawName = nameInput.value;
+            const rawUtr = utrInput.value;
+            const name = sanitizeInput(rawName);
+            const utr = rawUtr.trim();
+
+            // Validate fields
+            if (!name || !utr) {
+                alert('❌ Please fill in all fields.');
+                applyCooldown();
+                return;
+            }
+
+            if (!isValidUTR(utr)) {
+                alert('❌ Invalid UTR. Please enter exactly 12 digits.');
+                applyCooldown();
+                return;
+            }
+
+            // Disable submit button to prevent double submission
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Checking...';
+
+            // Check if UTR already exists in database
+            database.ref("payments").orderByChild("utr").equalTo(utr).once("value")
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        // UTR already used
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '✅ Submit UTR';
+                        alert('❌ This UTR has already been used. Please enter a unique UTR.');
+                        applyCooldown();
+                        return;
+                    }
+
+                    // UTR is unique, proceed with submission
+                    const paymentData = {
+                        name: name,
+                        utr: utr,
+                        status: "pending",
+                        time: new Date().toLocaleString(),
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    };
+
+                    // Push to Firebase
+                    return database.ref("payments").push(paymentData);
+                })
+                .then((ref) => {
+                    if (ref) {
+                        // Success
+                        resetCooldown();
+                        alert('✅ UTR submitted successfully! Wait for admin approval.');
+                        
+                        // Clear form
+                        nameInput.value = '';
+                        utrInput.value = '';
+                        
+                        // Reset button
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '✅ Submit UTR';
+                    }
+                })
+                .catch((error) => {
+                    console.error("Firebase error:", error);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Submit UTR';
+                    alert('❌ Network error. Please check your connection and try again.');
+                    applyCooldown();
+                });
+        }
+
+        // --- Event Listeners ---
+        openUpiBtn.addEventListener('click', openUpiApp);
+        submitBtn.addEventListener('click', submitUTR);
+
+        // Prevent non-numeric input in UTR field
+        utrInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '').slice(0, 12);
+        });
+
+        // Allow Enter key to submit
+        utrInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitUTR();
+            }
+        });
+
+        nameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                utrInput.focus();
+            }
+        });
+
+        // --- Initialize ---
+        function init() {
+            loadState();
+            
+            const now = Math.floor(Date.now() / 1000);
+            if (nextTryTimestamp > 0 && now < nextTryTimestamp) {
+                startCooldownTimer();
+                enableInputs(false);
+            } else if (nextTryTimestamp > 0 && now >= nextTryTimestamp) {
+                // Cooldown expired
+                resetCooldown();
+            }
+        }
+
+        init();
+    })();
 </script>
 
 </body>
