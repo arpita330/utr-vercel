@@ -1,54 +1,471 @@
-<h3>Admin Panel</h3>
+<!-- admin.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - UTR Payments</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            padding: 20px;
+            color: #eee;
+        }
+        .admin-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h3 {
+            text-align: center;
+            color: #e94560;
+            font-size: 2em;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .login-box {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 16px;
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .login-box input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #0f3460;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #1a1a2e;
+            color: #eee;
+            outline: none;
+            transition: border 0.3s;
+        }
+        .login-box input:focus {
+            border-color: #e94560;
+        }
+        .login-box input::placeholder {
+            color: #666;
+        }
+        .login-box button {
+            padding: 14px 30px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .login-box button:hover {
+            background: #c23152;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(233, 69, 96, 0.3);
+        }
+        #panel {
+            display: none;
+        }
+        .stats-bar {
+            background: #16213e;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #e94560;
+        }
+        .stat-label {
+            font-size: 0.8em;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        .payment-card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+            border-left: 4px solid #0f3460;
+        }
+        .payment-card:hover {
+            transform: translateX(5px);
+        }
+        .payment-card.status-paid {
+            border-left-color: #2ecc71;
+        }
+        .payment-card.status-pending {
+            border-left-color: #f39c12;
+        }
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .payment-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #fff;
+        }
+        .payment-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .payment-status.pending {
+            background: rgba(243, 156, 18, 0.2);
+            color: #f39c12;
+        }
+        .payment-status.paid {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+        }
+        .payment-details {
+            color: #bbb;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+        }
+        .payment-details span {
+            margin-right: 20px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn-approve {
+            padding: 8px 20px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        .btn-approve:hover {
+            background: #27ae60;
+            transform: translateY(-1px);
+        }
+        .btn-reject {
+            padding: 8px 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        .btn-reject:hover {
+            background: #c0392b;
+            transform: translateY(-1px);
+        }
+        .btn-delete {
+            padding: 8px 20px;
+            background: #7f8c8d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        .btn-delete:hover {
+            background: #6c7a7a;
+            transform: translateY(-1px);
+        }
+        .no-records {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1em;
+        }
+        .logout-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 30px;
+            background: #0f3460;
+            color: #aaa;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: #e94560;
+            color: white;
+        }
+        hr {
+            display: none;
+        }
+    </style>
+</head>
+<body>
 
-<input id="p" placeholder="Password">
-<button onclick="login()">Login</button>
+<div class="admin-container">
+    <h3>🔐 Admin Panel</h3>
 
-<div id="panel" style="display:none"></div>
+    <div class="login-box" id="loginBox">
+        <input type="password" id="p" placeholder="Enter Admin Password" autocomplete="off">
+        <button onclick="login()">Login</button>
+    </div>
 
-<script src="firebase.js"></script>
+    <div id="panel">
+        <div class="stats-bar" id="statsBar"></div>
+        <div id="paymentsList"></div>
+        <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+    (function() {
+        firebase.initializeApp({
+            apiKey: "AIzaSyA1mqCS0DPdgVnzi04Leyhk0E018vblTik",
+            authDomain: "upi-pay-6fc37.firebaseapp.com",
+            databaseURL: "https://upi-pay-6fc37-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "upi-pay-6fc37",
+            storageBucket: "upi-pay-6fc37.firebasestorage.app",
+            messagingSenderId: "1063195602640",
+            appId: "1:1063195602640:web:c7e4ca62d5f734b95fb8d5"
+        });
+        const database = firebase.database();
 
-PASS="1234"
+        const ADMIN_PASSWORD = "1234";
+        const SESSION_KEY = "admin_logged_in_v2";
 
-function login(){
+        const passwordInput = document.getElementById('p');
+        const loginBox = document.getElementById('loginBox');
+        const panel = document.getElementById('panel');
+        const paymentsList = document.getElementById('paymentsList');
+        const statsBar = document.getElementById('statsBar');
 
-if(document.getElementById("p").value!=PASS)
-return alert("Wrong password")
+        function isLoggedIn() {
+            return sessionStorage.getItem(SESSION_KEY) === 'true';
+        }
 
-document.getElementById("panel").style.display="block"
+        function setLoggedIn(value) {
+            if (value) {
+                sessionStorage.setItem(SESSION_KEY, 'true');
+            } else {
+                sessionStorage.removeItem(SESSION_KEY);
+            }
+        }
 
-firebase.database().ref("payments").on("value",s=>{
+        function login() {
+            const password = passwordInput.value.trim();
+            if (!password) {
+                alert('❌ Please enter password.');
+                return;
+            }
+            if (password !== ADMIN_PASSWORD) {
+                alert('❌ Wrong password!');
+                passwordInput.value = '';
+                return;
+            }
+            setLoggedIn(true);
+            loginBox.style.display = 'none';
+            panel.style.display = 'block';
+            passwordInput.value = '';
+            loadPayments();
+        }
 
-h=""
+        function logout() {
+            setLoggedIn(false);
+            panel.style.display = 'none';
+            loginBox.style.display = 'flex';
+            paymentsList.innerHTML = '';
+            statsBar.innerHTML = '';
+            if (window.paymentsListener) {
+                database.ref("payments").off("value", window.paymentsListener);
+                window.paymentsListener = null;
+            }
+        }
 
-s.forEach(x=>{
+        function loadPayments() {
+            if (window.paymentsListener) {
+                database.ref("payments").off("value", window.paymentsListener);
+            }
+            window.paymentsListener = database.ref("payments").on("value", (snapshot) => {
+                const payments = [];
+                snapshot.forEach((child) => {
+                    payments.push({
+                        id: child.key,
+                        ...child.val()
+                    });
+                });
+                payments.sort((a, b) => {
+                    const timeA = a.timestamp || 0;
+                    const timeB = b.timestamp || 0;
+                    return timeB - timeA;
+                });
+                renderPayments(payments);
+            });
+        }
 
-v=x.val()
+        function renderPayments(payments) {
+            const total = payments.length;
+            const pending = payments.filter(p => p.status === 'pending').length;
+            const paid = payments.filter(p => p.status === 'paid' || p.status === 'approved').length;
+            const rejected = payments.filter(p => p.status === 'rejected').length;
 
-h+=`
-<div>
-<b>${v.name}</b><br>
-UTR: ${v.utr}<br>
-Time: ${v.time}<br>
-Status: ${v.status}<br>
-<button onclick="approve('${x.key}')">Approve</button>
-</div><hr>
-`
+            statsBar.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${total}</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color:#f39c12">${pending}</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color:#2ecc71">${paid}</div>
+                    <div class="stat-label">Approved</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color:#e74c3c">${rejected}</div>
+                    <div class="stat-label">Rejected</div>
+                </div>
+            `;
 
-})
+            if (payments.length === 0) {
+                paymentsList.innerHTML = '<div class="no-records">📭 No payment records found.</div>';
+                return;
+            }
 
-document.getElementById("panel").innerHTML=h
+            let html = '';
+            payments.forEach((payment) => {
+                const statusClass = (payment.status === 'paid' || payment.status === 'approved') ? 'paid' : 
+                                   (payment.status === 'rejected' ? 'rejected' : 'pending');
+                const statusLabel = payment.status || 'pending';
+                const isApproved = (payment.status === 'paid' || payment.status === 'approved');
+                const isRejected = payment.status === 'rejected';
 
-})
+                html += `
+                <div class="payment-card status-${statusClass}">
+                    <div class="payment-header">
+                        <span class="payment-name">👤 ${escapeHtml(payment.name || 'Unknown')}</span>
+                        <span class="payment-status ${statusClass}">${statusLabel.toUpperCase()}</span>
+                    </div>
+                    <div class="payment-details">
+                        <span>🔢 UTR: <strong>${escapeHtml(payment.utr || 'N/A')}</strong></span>
+                        <span>🕐 ${escapeHtml(payment.time || 'N/A')}</span>
+                    </div>
+                    <div class="action-buttons">
+                        ${!isApproved ? `<button class="btn-approve" onclick="approvePayment('${payment.id}')">✅ Approve</button>` : ''}
+                        ${!isRejected && !isApproved ? `<button class="btn-reject" onclick="rejectPayment('${payment.id}')">❌ Reject</button>` : ''}
+                        <button class="btn-delete" onclick="deletePayment('${payment.id}')">🗑 Delete</button>
+                    </div>
+                </div>
+                `;
+            });
 
-}
+            paymentsList.innerHTML = html;
+        }
 
-function approve(id){
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
 
-firebase.database().ref("payments/"+id+"/status").set("paid")
-alert("Approved")
+        function approvePayment(id) {
+            if (!confirm('Are you sure you want to APPROVE this payment?')) return;
+            database.ref("payments/" + id).update({
+                status: "paid",
+                approvedAt: firebase.database.ServerValue.TIMESTAMP
+            })
+            .then(() => {
+                console.log('Payment approved:', id);
+            })
+            .catch((error) => {
+                console.error('Error approving payment:', error);
+                alert('❌ Error approving payment. Please try again.');
+            });
+        }
 
-}
+        function rejectPayment(id) {
+            if (!confirm('Are you sure you want to REJECT this payment?')) return;
+            database.ref("payments/" + id).update({
+                status: "rejected",
+                rejectedAt: firebase.database.ServerValue.TIMESTAMP
+            })
+            .then(() => {
+                console.log('Payment rejected:', id);
+            })
+            .catch((error) => {
+                console.error('Error rejecting payment:', error);
+                alert('❌ Error rejecting payment. Please try again.');
+            });
+        }
 
+        function deletePayment(id) {
+            if (!confirm('Are you sure you want to DELETE this payment record? This cannot be undone.')) return;
+            database.ref("payments/" + id).remove()
+            .then(() => {
+                console.log('Payment deleted:', id);
+            })
+            .catch((error) => {
+                console.error('Error deleting payment:', error);
+                alert('❌ Error deleting payment. Please try again.');
+            });
+        }
+
+        window.login = login;
+        window.logout = logout;
+        window.approvePayment = approvePayment;
+        window.rejectPayment = rejectPayment;
+        window.deletePayment = deletePayment;
+
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                login();
+            }
+        });
+
+        if (isLoggedIn()) {
+            loginBox.style.display = 'none';
+            panel.style.display = 'block';
+            loadPayments();
+        }
+    })();
 </script>
+
+</body>
+</html>
