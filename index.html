@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -117,60 +118,44 @@
     <div id="timerDisplay"></div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
     (function() {
-        // --- Firebase Configuration ---
-        // IMPORTANT: Replace with your actual Firebase config
-        const firebaseConfig = {
-            apiKey: "AIzaSyDummyKeyForDemoReplaceWithYours",
-            authDomain: "your-project.firebaseapp.com",
-            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-            projectId: "your-project",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abc123def456"
-        };
-
-        // Initialize Firebase only if not already initialized
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        firebase.initializeApp({
+            apiKey: "AIzaSyA1mqCS0DPdgVnzi04Leyhk0E018vblTik",
+            authDomain: "upi-pay-6fc37.firebaseapp.com",
+            databaseURL: "https://upi-pay-6fc37-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "upi-pay-6fc37",
+            storageBucket: "upi-pay-6fc37.firebasestorage.app",
+            messagingSenderId: "1063195602640",
+            appId: "1:1063195602640:web:c7e4ca62d5f734b95fb8d5"
+        });
         const database = firebase.database();
 
-        // --- Cooldown Configuration ---
-        const cooldowns = [60, 180, 300, 600, 3600]; // in seconds
+        const cooldowns = [60, 180, 300, 600, 3600];
         const STORAGE_KEY_ATTEMPTS = "utr_attempts_v2";
         const STORAGE_KEY_NEXT_TRY = "utr_next_try_v2";
 
-        // --- State Management ---
         let attempts = 0;
         let nextTryTimestamp = 0;
         let timerInterval = null;
 
-        // --- DOM Elements ---
         const nameInput = document.getElementById('name');
         const utrInput = document.getElementById('utr');
         const openUpiBtn = document.getElementById('openUpiBtn');
         const submitBtn = document.getElementById('submitBtn');
         const timerDisplay = document.getElementById('timerDisplay');
 
-        // --- Initialize from Local Storage ---
         function loadState() {
             try {
                 const storedAttempts = localStorage.getItem(STORAGE_KEY_ATTEMPTS);
                 const storedNextTry = localStorage.getItem(STORAGE_KEY_NEXT_TRY);
-
                 attempts = storedAttempts ? parseInt(storedAttempts, 10) : 0;
                 nextTryTimestamp = storedNextTry ? parseInt(storedNextTry, 10) : 0;
-
-                // Validate parsed values
                 if (isNaN(attempts) || attempts < 0) attempts = 0;
                 if (isNaN(nextTryTimestamp) || nextTryTimestamp < 0) nextTryTimestamp = 0;
-
-                // If cooldown expired, reset attempts
                 const now = Math.floor(Date.now() / 1000);
                 if (nextTryTimestamp > 0 && now >= nextTryTimestamp) {
                     attempts = 0;
@@ -203,11 +188,9 @@
             }
         }
 
-        // --- Timer Display & Cooldown Management ---
         function updateTimerDisplay() {
             const now = Math.floor(Date.now() / 1000);
             const left = nextTryTimestamp - now;
-
             if (left <= 0) {
                 timerDisplay.textContent = '';
                 if (timerInterval) {
@@ -217,7 +200,6 @@
                 enableInputs(true);
                 return;
             }
-
             const mins = Math.floor(left / 60);
             const secs = left % 60;
             timerDisplay.textContent = `⏳ Cooldown: ${mins}:${secs.toString().padStart(2, '0')} remaining`;
@@ -235,7 +217,6 @@
             utrInput.disabled = !enabled;
             submitBtn.disabled = !enabled;
             openUpiBtn.disabled = !enabled;
-            
             if (!enabled) {
                 submitBtn.style.opacity = '0.6';
                 submitBtn.style.cursor = 'not-allowed';
@@ -249,16 +230,13 @@
             }
         }
 
-        // --- Cooldown Logic ---
         function applyCooldown() {
             attempts++;
             const idx = Math.min(attempts - 1, cooldowns.length - 1);
             const waitSeconds = cooldowns[idx];
-            
             nextTryTimestamp = Math.floor(Date.now() / 1000) + waitSeconds;
             saveState();
             startCooldownTimer();
-
             alert(`⚠️ Invalid attempt ${attempts}. Please wait ${waitSeconds} seconds before trying again.`);
         }
 
@@ -274,32 +252,22 @@
             enableInputs(true);
         }
 
-        // --- UTR Validation ---
         function isValidUTR(utr) {
-            // Must be exactly 12 digits
             return /^\d{12}$/.test(utr);
         }
 
-        // --- Sanitize Inputs ---
         function sanitizeInput(input) {
-            return input.trim().replace(/[<>]/g, ''); // Basic XSS prevention
+            return input.trim().replace(/[<>]/g, '');
         }
 
-        // --- UPI Deep Link ---
         function openUpiApp() {
-            // Check if cooldown is active
             const now = Math.floor(Date.now() / 1000);
             if (now < nextTryTimestamp) {
                 const left = nextTryTimestamp - now;
                 alert(`Please wait ${left} seconds before proceeding.`);
                 return;
             }
-
-            // Try multiple UPI intent formats for better compatibility
             const upiLink = 'upi://pay?pa=example@upi&pn=Merchant&am=0&cu=INR&mode=00';
-            const intentLink = 'intent://pay?pa=example@upi&pn=Merchant&am=0&cu=INR&mode=00#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end';
-            
-            // Use location.href for standard UPI link
             try {
                 window.location.href = upiLink;
             } catch (e) {
@@ -308,53 +276,38 @@
             }
         }
 
-        // --- Submit UTR ---
         function submitUTR() {
             const now = Math.floor(Date.now() / 1000);
-
-            // Check cooldown
             if (now < nextTryTimestamp) {
                 const left = nextTryTimestamp - now;
                 alert(`⏳ Please wait ${left} seconds before submitting.`);
                 return;
             }
-
-            // Get and sanitize inputs
             const rawName = nameInput.value;
             const rawUtr = utrInput.value;
             const name = sanitizeInput(rawName);
             const utr = rawUtr.trim();
-
-            // Validate fields
             if (!name || !utr) {
                 alert('❌ Please fill in all fields.');
                 applyCooldown();
                 return;
             }
-
             if (!isValidUTR(utr)) {
                 alert('❌ Invalid UTR. Please enter exactly 12 digits.');
                 applyCooldown();
                 return;
             }
-
-            // Disable submit button to prevent double submission
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Checking...';
-
-            // Check if UTR already exists in database
             database.ref("payments").orderByChild("utr").equalTo(utr).once("value")
                 .then((snapshot) => {
                     if (snapshot.exists()) {
-                        // UTR already used
                         submitBtn.disabled = false;
                         submitBtn.textContent = '✅ Submit UTR';
                         alert('❌ This UTR has already been used. Please enter a unique UTR.');
                         applyCooldown();
                         return;
                     }
-
-                    // UTR is unique, proceed with submission
                     const paymentData = {
                         name: name,
                         utr: utr,
@@ -362,21 +315,14 @@
                         time: new Date().toLocaleString(),
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     };
-
-                    // Push to Firebase
                     return database.ref("payments").push(paymentData);
                 })
                 .then((ref) => {
                     if (ref) {
-                        // Success
                         resetCooldown();
                         alert('✅ UTR submitted successfully! Wait for admin approval.');
-                        
-                        // Clear form
                         nameInput.value = '';
                         utrInput.value = '';
-                        
-                        // Reset button
                         submitBtn.disabled = false;
                         submitBtn.textContent = '✅ Submit UTR';
                     }
@@ -390,16 +336,13 @@
                 });
         }
 
-        // --- Event Listeners ---
         openUpiBtn.addEventListener('click', openUpiApp);
         submitBtn.addEventListener('click', submitUTR);
 
-        // Prevent non-numeric input in UTR field
         utrInput.addEventListener('input', function(e) {
             this.value = this.value.replace(/\D/g, '').slice(0, 12);
         });
 
-        // Allow Enter key to submit
         utrInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -414,16 +357,13 @@
             }
         });
 
-        // --- Initialize ---
         function init() {
             loadState();
-            
             const now = Math.floor(Date.now() / 1000);
             if (nextTryTimestamp > 0 && now < nextTryTimestamp) {
                 startCooldownTimer();
                 enableInputs(false);
             } else if (nextTryTimestamp > 0 && now >= nextTryTimestamp) {
-                // Cooldown expired
                 resetCooldown();
             }
         }
